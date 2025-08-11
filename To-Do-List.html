@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اپلیکیشن لیست کارها</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-jalaali/0.9.2/moment-jalaali.js"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+        /* Neumorphism Styles */
+        .neumorphic-card {
+            background: #1e293b;
+            border-radius: 20px;
+            box-shadow: 8px 8px 16px #1a2431, -8px -8px 16px #222e45;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .neumorphic-inset {
+            background: #1e293b;
+            border-radius: 12px;
+            box-shadow: inset 5px 5px 10px #1a2431, inset -5px -5px 10px #222e45;
+        }
+        .filter-btn.active {
+            background: #1e293b;
+            color: #38bdf8; /* sky-400 */
+            box-shadow: inset 4px 4px 8px #1a2431, inset -4px -4px 8px #222e45;
+        }
+
+        .task-item.priority-high { border-right-color: #f43f5e; }
+        .task-item.priority-medium { border-right-color: #f59e0b; }
+        .task-item.priority-low { border-right-color: #10b981; }
+
+        .completed .task-text { text-decoration: line-through; color: #64748b; }
+
+        .subtask-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, margin-top 0.5s ease-in-out, padding-top 0.5s ease-in-out;
+        }
+        .task-item.expanded .subtask-container {
+            max-height: 500px;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+        }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in-up {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+        #task-list .task-item {
+            opacity: 0; /* Start as invisible for staggered animation */
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div class="container mx-auto max-w-3xl px-4 py-8">
+        
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">مدیریت وظایف</h1>
+            <p class="text-slate-400 mt-2">پروژه‌های خود را با زیرکارها و اولویت‌ها مدیریت کنید.</p>
+        </header>
+
+        <div class="neumorphic-card p-4 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button id="open-add-modal-btn" class="w-full col-span-1 md:col-span-1 bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-sky-500/30 flex items-center justify-center gap-2 transform hover:-translate-y-0.5">
+                    <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    <span>کار جدید</span>
+                </button>
+                <div class="relative col-span-1 md:col-span-2">
+                    <input type="text" id="search-input" placeholder="جستجوی کارها..." class="w-full neumorphic-inset text-slate-300 placeholder-slate-500 rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition py-3 pl-10 pr-4 border-none">
+                    <svg class="w-5 h-5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 text-slate-400 gap-4">
+             <div id="filter-buttons" class="flex gap-2 p-1 neumorphic-inset rounded-xl">
+                <button class="filter-btn px-4 py-1.5 rounded-lg text-sm transition-all" data-filter="all">همه</button>
+                <button class="filter-btn px-4 py-1.5 rounded-lg text-sm transition-all" data-filter="active">فعال</button>
+                <button class="filter-btn px-4 py-1.5 rounded-lg text-sm transition-all" data-filter="completed">تکمیل شده</button>
+             </div>
+             <div class="flex items-center gap-2">
+                <label for="sort-by" class="text-sm">مرتب‌سازی:</label>
+                <select id="sort-by" class="neumorphic-inset border-none rounded-lg text-sm focus:ring-2 focus:ring-sky-500 py-2 pr-3 pl-8">
+                    <option value="createdAt_desc">جدیدترین</option>
+                    <option value="createdAt_asc">قدیمی‌ترین</option>
+                    <option value="dueDate_asc">تاریخ سررسید</option>
+                    <option value="priority_desc">اولویت</option>
+                </select>
+             </div>
+        </div>
+        
+        <div id="task-list-container" class="min-h-[400px]">
+            <ul id="task-list" class="space-y-4"></ul>
+            <div id="empty-state" class="hidden"></div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="task-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="neumorphic-card w-full max-w-md fade-in-up">
+            <form id="task-form" class="p-6">
+                <h3 id="modal-title" class="text-xl font-bold text-slate-100 mb-6">افزودن کار جدید</h3>
+                <input type="hidden" id="task-id">
+                <div class="space-y-4">
+                    <input type="text" id="modal-task-text" required placeholder="عنوان کار" class="w-full neumorphic-inset rounded-md border-none focus:ring-2 focus:ring-sky-500 p-3">
+                    <input type="text" id="modal-tags" placeholder="برچسب‌ها (با کاما جدا کنید)" class="w-full neumorphic-inset rounded-md border-none focus:ring-2 focus:ring-sky-500 p-3">
+                    <div class="grid grid-cols-2 gap-4">
+                        <select id="modal-priority" class="w-full neumorphic-inset rounded-md border-none focus:ring-2 focus:ring-sky-500 p-3">
+                            <option value="low">اولویت: کم</option>
+                            <option value="medium" selected>اولویت: متوسط</option>
+                            <option value="high">اولویت: زیاد</option>
+                        </select>
+                        <input type="date" id="modal-due-date" class="w-full neumorphic-inset rounded-md border-none focus:ring-2 focus:ring-sky-500 p-3" style="color-scheme: dark;">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 mt-8">
+                    <button type="button" id="modal-cancel-btn" class="px-5 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-colors">لغو</button>
+                    <button type="submit" class="px-5 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white transition-colors">ذخیره</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="neumorphic-card w-full max-w-sm text-center p-6 fade-in-up">
+            <h3 class="text-lg font-bold text-red-400 mb-2">تایید حذف</h3>
+            <p id="delete-modal-text" class="text-slate-300 mb-6">آیا از حذف این مورد مطمئن هستید؟</p>
+            <div class="flex justify-center gap-4">
+                <button id="delete-cancel-btn" class="px-6 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-colors">لغو</button>
+                <button id="delete-confirm-btn" class="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors">بله، حذف کن</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        moment.locale('fa');
+
+        let state = {
+            tasks: JSON.parse(localStorage.getItem('tasks-pro-v4')) || [],
+            currentFilter: 'all', sortBy: 'createdAt_desc', searchTerm: '',
+            deleteTarget: { type: null, parentId: null, id: null }
+        };
+
+        const elements = {
+            openAddModalBtn: document.getElementById('open-add-modal-btn'),
+            searchInput: document.getElementById('search-input'),
+            filterButtons: document.getElementById('filter-buttons'),
+            sortBySelect: document.getElementById('sort-by'),
+            taskList: document.getElementById('task-list'),
+            emptyState: document.getElementById('empty-state'),
+            taskModal: document.getElementById('task-modal'),
+            taskForm: document.getElementById('task-form'),
+            modalTitle: document.getElementById('modal-title'),
+            taskIdInput: document.getElementById('task-id'),
+            modalTaskText: document.getElementById('modal-task-text'),
+            modalTags: document.getElementById('modal-tags'),
+            modalPriority: document.getElementById('modal-priority'),
+            modalDueDate: document.getElementById('modal-due-date'),
+            modalCancelBtn: document.getElementById('modal-cancel-btn'),
+            deleteModal: document.getElementById('delete-modal'),
+            deleteModalText: document.getElementById('delete-modal-text'),
+            deleteConfirmBtn: document.getElementById('delete-confirm-btn'),
+            deleteCancelBtn: document.getElementById('delete-cancel-btn'),
+        };
+
+        const saveState = () => localStorage.setItem('tasks-pro-v4', JSON.stringify(state.tasks));
+        const priorityMap = {
+            high: { text: 'زیاد', class: 'bg-rose-500/80', sort: 3 },
+            medium: { text: 'متوسط', class: 'bg-amber-500/80', sort: 2 },
+            low: { text: 'کم', class: 'bg-emerald-500/80', sort: 1 },
+        };
+
+        const openModal = (modalElem) => modalElem.classList.remove('hidden');
+        const closeModal = (modalElem) => modalElem.classList.add('hidden');
+
+        const openTaskModal = (task = null) => {
+            elements.taskForm.reset();
+            if (task) {
+                elements.modalTitle.textContent = 'ویرایش کار';
+                elements.taskIdInput.value = task.id;
+                elements.modalTaskText.value = task.text;
+                elements.modalPriority.value = task.priority;
+                elements.modalTags.value = (task.tags || []).join(', ');
+                elements.modalDueDate.value = task.dueDate ? moment(task.dueDate).format('YYYY-MM-DD') : '';
+            } else {
+                elements.modalTitle.textContent = 'افزودن کار جدید';
+                elements.taskIdInput.value = '';
+                elements.modalPriority.value = 'medium';
+            }
+            openModal(elements.taskModal);
+        };
+
+        const openDeleteModal = (type, id, parentId = null) => {
+            state.deleteTarget = { type, id, parentId };
+            const itemText = type === 'task' ? 'این کار و تمام زیرکارهای آن' : 'این زیرکار';
+            elements.deleteModalText.textContent = `آیا از حذف ${itemText} مطمئن هستید؟`;
+            openModal(elements.deleteModal);
+        };
+
+        const executeDelete = () => {
+            if (state.deleteTarget.type === 'task') {
+                state.tasks = state.tasks.filter(t => t.id !== state.deleteTarget.id);
+            } else if (state.deleteTarget.type === 'subtask') {
+                const parentTask = state.tasks.find(t => t.id === state.deleteTarget.parentId);
+                if (parentTask) parentTask.subtasks = parentTask.subtasks.filter(st => st.id !== state.deleteTarget.id);
+            }
+            closeModal(elements.deleteModal);
+            saveState();
+            renderTasks();
+        };
+
+        const renderTasks = () => {
+            elements.taskList.innerHTML = '';
+            elements.emptyState.classList.add('hidden');
+
+            let processedTasks = [...state.tasks].filter(task => {
+                const filterMatch = (state.currentFilter === 'all') || (state.currentFilter === 'active' && !task.completed) || (state.currentFilter === 'completed' && task.completed);
+                const searchMatch = !state.searchTerm || task.text.toLowerCase().includes(state.searchTerm.toLowerCase()) || (task.tags && task.tags.some(tag => tag.toLowerCase().includes(state.searchTerm.toLowerCase())));
+                return filterMatch && searchMatch;
+            });
+            
+            processedTasks.sort((a, b) => {
+                if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                switch (state.sortBy) {
+                    case 'dueDate_asc': return (!a.dueDate ? 1 : !b.dueDate ? -1 : new Date(a.dueDate) - new Date(b.dueDate));
+                    case 'priority_desc': return priorityMap[b.priority].sort - priorityMap[a.priority].sort;
+                    case 'createdAt_asc': return new Date(a.createdAt) - new Date(b.createdAt);
+                    default: return new Date(b.createdAt) - new Date(a.createdAt);
+                }
+            });
+
+            if (processedTasks.length === 0) {
+                elements.emptyState.innerHTML = getEmptyStateHTML('لیست کارها خالی است.', 'یک کار جدید اضافه کنید تا شروع کنید!');
+                elements.emptyState.classList.remove('hidden');
+            } else {
+                processedTasks.forEach((task, index) => {
+                    const taskElement = createTaskElement(task);
+                    taskElement.style.animationDelay = `${index * 60}ms`;
+                    elements.taskList.appendChild(taskElement);
+                });
+            }
+            updateFilterButtons();
+        };
+
+        const getEmptyStateHTML = (title, subtitle) => `
+            <div class="text-center py-16 px-4 fade-in-up">
+                <svg class="mx-auto h-16 w-16 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                <h3 class="mt-2 text-lg font-medium text-slate-400">${title}</h3>
+                <p class="mt-1 text-sm text-slate-500">${subtitle}</p>
+            </div>`;
+
+        const createTaskElement = (task) => {
+            const li = document.createElement('li');
+            li.className = `task-item neumorphic-card border-r-4 transition-all duration-300 p-4 fade-in-up priority-${task.priority} ${task.expanded ? 'expanded' : ''} ${task.completed ? 'opacity-50' : ''}`;
+            li.dataset.id = task.id;
+
+            const completedSubtasks = (task.subtasks || []).filter(st => st.completed).length;
+            const totalSubtasks = (task.subtasks || []).length;
+            const progress = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
+
+            li.innerHTML = `
+                <div class="flex items-start gap-4">
+                    <button class="toggle-task-btn shrink-0 mt-1 w-6 h-6 neumorphic-inset rounded-full flex items-center justify-center transition-all">${task.completed ? '<svg class="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>' : ''}</button>
+                    <div class="flex-grow min-w-0">
+                        <p class="task-text font-medium text-slate-200 ${task.completed ? 'completed' : ''}">${task.text}</p>
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400 mt-2">
+                            <span class="flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-xs ${priorityMap[task.priority].class}">${priorityMap[task.priority].text}</span>
+                            ${task.dueDate ? `<span class="flex items-center gap-1.5"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>${moment(task.dueDate).format('jD jMMMM')}</span>` : ''}
+                            <div class="flex gap-1.5 flex-wrap">${(task.tags || []).map(tag => `<span class="bg-slate-700/70 px-2 py-0.5 rounded-full text-xs">#${tag}</span>`).join('')}</div>
+                        </div>
+                    </div>
+                    <div class="shrink-0 flex items-center gap-1">
+                        ${(task.subtasks || []).length > 0 ? `<button class="expand-btn text-slate-500 hover:text-sky-400 p-1 rounded-full transition-transform duration-300 ${task.expanded ? 'rotate-180' : ''}"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button>` : ''}
+                        <button class="edit-btn text-slate-500 hover:text-sky-400 p-1 rounded-full"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button>
+                        <button class="delete-task-btn text-slate-500 hover:text-red-400 p-1 rounded-full"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button>
+                    </div>
+                </div>
+                ${(task.subtasks || []).length > 0 ? `<div class="mt-4 space-y-2"><div class="flex justify-between items-center text-xs text-slate-400"><p>پیشرفت</p><span>% ${progress}</span></div><div class="w-full bg-slate-700 rounded-full h-1.5"><div class="bg-gradient-to-r from-sky-400 to-blue-500 h-1.5 rounded-full transition-all duration-500" style="width: ${progress}%"></div></div></div>` : ''}
+                <div class="subtask-container border-t border-slate-700/50">
+                    <ul class="subtask-list space-y-2 pt-3">
+                        ${(task.subtasks || []).map(st => createSubtaskElement(st, task.id)).join('')}
+                    </ul>
+                    ${!task.completed ? `<div class="add-subtask-form flex gap-2 mt-3">
+                        <input type="text" placeholder="افزودن زیرکار..." class="w-full neumorphic-inset text-sm rounded-md border-none focus:ring-1 focus:ring-sky-500 px-3 py-1.5">
+                        <button class="add-subtask-btn bg-slate-600 hover:bg-sky-600 text-xs px-3 rounded-md transition-colors">افزودن</button>
+                    </div>` : ''}
+                </div>
+            `;
+            return li;
+        };
+        
+        const createSubtaskElement = (subtask, parentId) => `
+            <li class="subtask-item flex items-center justify-between ml-8" data-id="${subtask.id}" data-parent-id="${parentId}">
+                <div class="flex items-center gap-3">
+                    <button class="toggle-subtask-btn shrink-0 w-4 h-4 border-2 ${subtask.completed ? 'border-sky-500 bg-sky-500' : 'border-slate-500'} rounded-sm flex items-center justify-center transition-all"></button>
+                    <span class="text-sm ${subtask.completed ? 'line-through text-slate-500' : 'text-slate-300'}">${subtask.text}</span>
+                </div>
+                <button class="delete-subtask-btn text-slate-600 hover:text-red-500"><svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></button>
+            </li>`;
+
+        const updateFilterButtons = () => {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.filter === state.currentFilter) btn.classList.add('active');
+            });
+        };
+
+        const handleTaskClick = (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            const taskLi = e.target.closest('.task-item');
+            if(!taskLi) return;
+            const taskId = Number(taskLi.dataset.id);
+            const task = state.tasks.find(t => t.id === taskId);
+            if(!task) return;
+
+            const actionMap = {
+                'toggle-task-btn': () => { task.completed = !task.completed; },
+                'edit-btn': () => { openTaskModal(task); return true; },
+                'delete-task-btn': () => { openDeleteModal('task', taskId); return true; },
+                'expand-btn': () => { task.expanded = !task.expanded; },
+                'add-subtask-btn': () => {
+                    const input = taskLi.querySelector('.add-subtask-form input');
+                    if (input.value.trim()) {
+                        if(!task.subtasks) task.subtasks = [];
+                        task.subtasks.push({ id: Date.now(), text: input.value.trim(), completed: false });
+                        input.value = '';
+                    }
+                },
+                'toggle-subtask-btn': () => {
+                    const subtaskLi = e.target.closest('.subtask-item');
+                    const subtaskId = Number(subtaskLi.dataset.id);
+                    const subtask = task.subtasks.find(st => st.id === subtaskId);
+                    if (subtask) subtask.completed = !subtask.completed;
+                },
+                'delete-subtask-btn': () => {
+                    const subtaskLi = e.target.closest('.subtask-item');
+                    const subtaskId = Number(subtaskLi.dataset.id);
+                    openDeleteModal('subtask', subtaskId, taskId);
+                    return true;
+                }
+            };
+            
+            for(const className in actionMap) {
+                if(button.classList.contains(className)) {
+                    if(actionMap[className]()) return;
+                    break;
+                }
+            }
+            saveState();
+            renderTasks();
+        };
+
+        elements.taskForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = elements.taskIdInput.value;
+            const taskData = {
+                text: elements.modalTaskText.value.trim(),
+                priority: elements.modalPriority.value,
+                dueDate: elements.modalDueDate.value || null,
+                tags: elements.modalTags.value.split(',').map(t => t.trim()).filter(Boolean),
+            };
+            if (!taskData.text) return;
+
+            if (id) {
+                const taskIndex = state.tasks.findIndex(t => t.id == id);
+                if (taskIndex > -1) state.tasks[taskIndex] = { ...state.tasks[taskIndex], ...taskData };
+            } else {
+                state.tasks.unshift({ id: Date.now(), completed: false, createdAt: new Date().toISOString(), subtasks: [], expanded: false, ...taskData });
+            }
+            saveState(); renderTasks(); closeModal(elements.taskModal);
+        });
+        
+        elements.taskList.addEventListener('click', handleTaskClick);
+        elements.openAddModalBtn.addEventListener('click', () => openTaskModal());
+        elements.modalCancelBtn.addEventListener('click', () => closeModal(elements.taskModal));
+        elements.deleteConfirmBtn.addEventListener('click', executeDelete);
+        elements.deleteCancelBtn.addEventListener('click', () => closeModal(elements.deleteModal));
+        elements.filterButtons.addEventListener('click', (e) => {
+            if (e.target.matches('.filter-btn')) { state.currentFilter = e.target.dataset.filter; renderTasks(); }
+        });
+        elements.sortBySelect.addEventListener('change', (e) => { state.sortBy = e.target.value; renderTasks(); });
+        elements.searchInput.addEventListener('input', (e) => { state.searchTerm = e.target.value; renderTasks(); });
+
+        renderTasks();
+    });
+    </script>
+</body>
+</html>
